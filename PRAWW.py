@@ -77,33 +77,7 @@ class PRAWW:
     def convert_to_token(self, comment, tokenizer):
         #comment has to be an array
         comment_token = tokenizer.texts_to_sequences(comment)
-        return comment_token
-
-    def create_word_network(self, texts, tokenizer):
-        text_tokens = tokenizer.texts_to_sequences(texts)
-        corp_tag = nltk.pos_tag(text_tokens)
-
-        corp_chunk = nltk.ne_chunk(corp_tag)
-
-        proper = []
-        for token in corp_chunk: 
-            if hasattr(token, 'label') and token.label() == "PERSON":
-                    proper.append(" ".join(c[0] for c in token.leaves()))
-
-        # Find the most common proper nouns 
-        # (in our case, only the first word was kept to eliminate duplicates 
-        # like first-name last-name, and last-name)           
-        top_30 = Counter(proper).most_common(30)  
-
-        # Find similar words 
-        text = nltk.text.ContextIndex([word for word in text_tokens])
-
-        all_words = {}
-        for word, similar_words in words.items():
-            all_words[word] = word
-            for similar_word in similar_words:
-                all_words[similar_word] = word
-    
+        return comment_token    
 
 p = PRAWW()
 (texts, labels) = p.get_comments_top_all('The_Donald', 20, 0)
