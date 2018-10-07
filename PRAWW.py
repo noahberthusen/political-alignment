@@ -1,11 +1,13 @@
 import praw
 import numpy as np
 import pandas as pd
+import nltk
+from collections import Counter
 from keras.preprocessing.text import Tokenizer
 from keras.preprocessing.sequence import pad_sequences
 
 class PRAWW:
-    common_words = ["http","https","com","www","imgur","r","a","about","all","are","an","also","and","as","at","be","because","but","by","can","come","could","day","do","deleted","even","find","first","for","from","get","give","go","have","he","her","here","him","has","his","how","i","is","if","in","into","it","its","it's","i'm","just","know","like","look","make","man","many","me","more","my","new","no","not","now","of","on","one","only","or","other","our","out","people","say","see","she","so","some","take","tell","than","that","the","their","them","then","there","these","they","thing","think","this","those","time","to","two","up","use","very","want","was","way","we","were","well","what","when","which","who","will","with","would","year","you","your"]
+    common_words = set("http","https","com","org","www","imgur","r","nbsp","a","about","all","are","an","also","and","as","at","be","because","but","by","can","come","could","day","do","deleted","even","find","first","for","from","get","give","go","have","he","her","here","him","has","his","how","i","is","if","in","into","it","its","it's","i'm","just","know","like","look","make","man","many","me","more","my","new","no","not","now","of","on","one","only","or","other","our","out","people","say","see","she","so","some","take","tell","than","that","the","their","them","then","there","these","they","thing","think","this","those","time","to","two","up","use","very","want","was","way","we","were","well","what","when","which","who","will","with","would","year","you","your")
 
     def __init__(self):
         self.reddit = praw.Reddit(client_id='Wa_QQy6c8J6w_Q',
@@ -65,18 +67,48 @@ class PRAWW:
         return tokenizer    
 
     def generate_occurance_data(self, tokenizer):
-        word_counts = tokenizer.word_counts
         sorted_by_value = sorted(tokenizer.word_counts.items(), key=lambda kv: kv[1])
 
-        data = pd.DataFrame(sorted_by_value, columns=['word', 'count']).tail(25)
-        print(data.info())
-        print(data)
-        data.plot(kind='bar')
+        data = pd.DataFrame(sorted_by_value, columns=['word', 'occurence']).tail(25)
+        data['occurence'] = data['occurence']/self.word_count
+        data.set_index("word",drop=True,inplace=True)
+        return data
 
+    def convert_to_token(self, comment, tokenizer):
+        #comment has to be an array
+        comment_token = tokenizer.texts_to_sequences(comment)
+        return comment_token
+
+    def create_word_network(self, texts, tokenizer):
+        text_tokens = tokenizer.texts_to_sequences(texts)
+        corp_tag = nltk.pos_tag(text_tokens)
+
+        corp_chunk = nltk.ne_chunk(corp_tag)
+
+        proper = []
+        for token in corp_chunk: 
+            if hasattr(token, 'label') and token.label() == "PERSON":
+                    proper.append(" ".join(c[0] for c in token.leaves()))
+
+        # Find the most common proper nouns 
+        # (in our case, only the first word was kept to eliminate duplicates 
+        # like first-name last-name, and last-name)           
+        top_30 = Counter(proper).most_common(30)  
+
+        # Find similar words 
+        text = nltk.text.ContextIndex([word for word in text_tokens])
+
+        all_words = {}
+        for word, similar_words in words.items():
+            all_words[word] = word
+            for similar_word in similar_words:
+                all_words[similar_word] = word
     
 
 p = PRAWW()
-(texts, labels) = p.get_comments_top_year('me_irl', 5, 0)
+(texts, labels) = p.get_comments_top_all('The_Donald', 20, 0)
 print(pd.DataFrame(texts).shape)
 token = p.tokenize_words(texts)
-p.generate_occurance_data(token)
+data = p.generate_occurance_data(token)
+print(data)
+data.plot(kind='bar')
